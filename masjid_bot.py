@@ -22,22 +22,22 @@ def getSalaahTimes(masjidID):
     return salaahTimes
 
 def getMasjidsNearby(location):
-    masjids = ""
-    print(location['latitude'])
+    masjids = "Masjids:\r\n"
     try:
-        data = json.load(urllib2.urlopen("http://api.masjidsms.co.za:80/v1/Masjids?Nearest?locLat="+location['latitude']+"&locLong="+location['latitude']))
+        data = json.load(urllib2.urlopen("http://api.masjidsms.co.za/v1/Masjids/Nearest?locLat="+str(location.latitude)+"&locLong="+str(location.longitude)+"&km=10"))
         for item in data:
-            masjids += item["name"]+", ID: "+str(item["id"])+"\r\n"
+            masjids += item["masjid"]["name"]+", distance: "+str(item["distance"])[:5]+"km , /timetable_"+str(item["masjid"]["id"])+"\r\n"
     except Exception as e:
         print(e)
+        print("Error")
     return masjids
 
 def getMasjids(searchText=""):
-    masjids = ""
+    masjids = "Masjids:\r\n"
     try:
         data = json.load(urllib2.urlopen('http://api.masjidsms.co.za:80/v1/Masjids?term='+searchText))
         for item in data:
-            masjids += item["name"]+", ID: "+str(item["id"])+"\r\n"
+            masjids += item["name"]+", /timetable_"+str(item["id"])+"\r\n"
     except Exception as e:
         print(e)
     return masjids
@@ -54,13 +54,11 @@ def handle_message(msg,uid):
         keyboardButton = {"text":"Send Location","request_location":True}
         keyboard = [[keyboardButton]]
         replyKeyBoardMarkup = {"keyboard":keyboard,"one_time_keyboard":True}
-        return {"text":"Click Send Location to find Masaajid in your vicinity..","keyboard":replyKeyBoardMarkup}
-    elif hasattr(msg,'longitude'):
-        return {"text":getMasjidsNearby(msg)}
+        return {"text":"Click \"Send Location\" to find Masaajid in your vicinity..","keyboard":replyKeyBoardMarkup}
     else: return {"text":"Unknown Command"}
 
 def handle_location(msg):
-    return {"text":getMasjidsNearby(msg)}
+    return getMasjidsNearby(msg)
 
 def main():
     QUIT = False
@@ -71,23 +69,22 @@ def main():
     print(bot.getMe())
     try:
         while not QUIT:  # loop for messages
-            #try:
-            updates = bot.getUpdates(offset=bot.getLastFetchedId() + 1)
-            for update in updates:
-                if update.message !=None:
-                    if update.message.text != None:
-                            if update.message.text.startswith("/"):
-                                reply = handle_message(update.message.text,update.message.msg_from.userid)
-                                if 'keyboard' in reply:
-                                    bot.sendMessage(str(update.message.msg_from.userid), reply['text'],reply_markup=json.dumps(reply['keyboard']))
-                                else:
-                                    bot.sendMessage(str(update.message.msg_from.userid), reply['text'])
-                    if update.message.location != None:
-                        print("Has location")
-                        bot.sendMessage(str(update.message.msg_from.userid), handle_location(update.message.location))
-            #except Exception as e:
-            #    print(e)
-            #    pass
+            try:
+                updates = bot.getUpdates(offset=bot.getLastFetchedId() + 1)
+                for update in updates:
+                    if update.message !=None:
+                        if update.message.text != None:
+                                if update.message.text.startswith("/"):
+                                    reply = handle_message(update.message.text,update.message.msg_from.userid)
+                                    if 'keyboard' in reply:
+                                        bot.sendMessage(str(update.message.msg_from.userid), reply['text'],reply_markup=json.dumps(reply['keyboard']))
+                                    else:
+                                        bot.sendMessage(str(update.message.msg_from.userid), reply['text'])
+                        if update.message.location != None:
+                            bot.sendMessage(str(update.message.msg_from.userid), handle_location(update.message.location))
+            except Exception as e:
+                print(e)
+                pass
             time.sleep(10)
     except KeyboardInterrupt:
         print("Keyboard interrupt")
