@@ -10,3 +10,5 @@ masjids.json
 masjidSMS.py
 
 sample.json
+
+*.key

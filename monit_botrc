@@ -1,0 +1,5 @@
+set daemon 10
+set alert yusufk@gmail.com {resource}
+check process masjid_bot with pidfile /opt/bots/masjid_bot/masjid_bot.pid
+	start program = "/opt/bots/masjid_bot/start_bot.sh"
+	stop program = "/opt/bots/masjid_bot/stop_bot.sh"
