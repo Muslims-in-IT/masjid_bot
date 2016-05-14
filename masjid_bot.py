@@ -21,6 +21,17 @@ def getSalaahTimes(masjidID):
         print(e)
     return salaahTimes
 
+def getMasjidsNearby(location):
+    masjids = ""
+    print(location['latitude'])
+    try:
+        data = json.load(urllib2.urlopen("http://api.masjidsms.co.za:80/v1/Masjids?Nearest?locLat="+location['latitude']+"&locLong="+location['latitude']))
+        for item in data:
+            masjids += item["name"]+", ID: "+str(item["id"])+"\r\n"
+    except Exception as e:
+        print(e)
+    return masjids
+
 def getMasjids(searchText=""):
     masjids = ""
     try:
@@ -34,32 +45,49 @@ def getMasjids(searchText=""):
 def handle_message(msg,uid):
     if msg.startswith('/timetable'):
         if len(msg) < 11:
-            return("Usage: /timetable <Masjid ID>")
+            return{"text":"Usage: /timetable <Masjid ID>"}
         else:
-            return getSalaahTimes(msg[11:])
+            return {"text":getSalaahTimes(msg[11:])}
     elif msg.startswith('/masjids'):
-        return getMasjids(msg[9:])
-    else: return("Unknown Command")
+        return {"text":getMasjids(msg[9:])}
+    elif msg.startswith('/nearby'):
+        keyboardButton = {"text":"Send Location","request_location":True}
+        keyboard = [[keyboardButton]]
+        replyKeyBoardMarkup = {"keyboard":keyboard,"one_time_keyboard":True}
+        return {"text":"Click Send Location to find Masaajid in your vicinity..","keyboard":replyKeyBoardMarkup}
+    elif hasattr(msg,'longitude'):
+        return {"text":getMasjidsNearby(msg)}
+    else: return {"text":"Unknown Command"}
+
+def handle_location(msg):
+    return {"text":getMasjidsNearby(msg)}
 
 def main():
     QUIT = False
     print("Starting...")
-    keyFile = open('bot.key')
+    keyFile = open('test_bot.key')
     key = keyFile.read()
     bot = BotApi(key.strip('\n'))
     print(bot.getMe())
     try:
         while not QUIT:  # loop for messages
-            try:
-                updates = bot.getUpdates(offset=bot.getLastFetchedId() + 1)
-                for update in updates:
-                    if update.message.msg_from is not None:
-                        if update.message.text is not None:
+            #try:
+            updates = bot.getUpdates(offset=bot.getLastFetchedId() + 1)
+            for update in updates:
+                if update.message !=None:
+                    if update.message.text != None:
                             if update.message.text.startswith("/"):
-                                bot.sendMessage(str(update.message.msg_from.userid), (handle_message(update.message.text,update.message.msg_from.userid)))
-            except Exception as e:
-                print(e)
-                pass
+                                reply = handle_message(update.message.text,update.message.msg_from.userid)
+                                if 'keyboard' in reply:
+                                    bot.sendMessage(str(update.message.msg_from.userid), reply['text'],reply_markup=json.dumps(reply['keyboard']))
+                                else:
+                                    bot.sendMessage(str(update.message.msg_from.userid), reply['text'])
+                    if update.message.location != None:
+                        print("Has location")
+                        bot.sendMessage(str(update.message.msg_from.userid), handle_location(update.message.location))
+            #except Exception as e:
+            #    print(e)
+            #    pass
             time.sleep(10)
     except KeyboardInterrupt:
         print("Keyboard interrupt")
